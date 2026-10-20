@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.gregcrist1maker.lunchmate",
+      "sha256_cert_fingerprints": [
+        "CF:A9:13:F9:9E:14:68:26:BD:7E:EE:7D:9E:F1:DA:AF:56:8A:92:D3:FF:51:A0:0C:03:06:AE:07:79:D5:F4:62"
+      ]
+    }
+  }
+]
