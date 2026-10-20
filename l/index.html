@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>Lunch Mate</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%B4%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../styles.css">
+  <script type="module" src="page.js"></script>
+</head>
+<body>
+  <!-- Shown when the Lunch Mate app isn't installed. Everything happens in
+       this browser: the lunch details are after the # in the address, which
+       browsers never send to the website. -->
+  <main>
+    <p id="message" class="notice" role="status" hidden></p>
+    <p id="error" class="notice error" role="alert" hidden></p>
+
+    <header id="header" hidden>
+      <h1 id="title"></h1>
+      <p id="meta" class="muted"></p>
+    </header>
+
+    <section id="plan" class="card highlight" hidden>
+      <h2>Lunch is set</h2>
+      <p class="big"><a id="spotLink" target="_blank" rel="noopener"></a></p>
+      <p id="spotAddress" class="muted"></p>
+      <p id="myLeave"></p>
+      <p id="planNote" class="muted"></p>
+      <table>
+        <thead><tr><th>Who</th><th>Travel</th><th>Leave by</th></tr></thead>
+        <tbody id="planRows"></tbody>
+      </table>
+    </section>
+
+    <section id="rsvp" class="card" hidden>
+      <h2 id="rsvpHeading">RSVP</h2>
+      <p id="rsvpNote" class="muted"></p>
+      <form id="rsvpForm">
+        <label>Your name
+          <input name="name" maxlength="60" required autocomplete="name">
+        </label>
+        <button type="submit" class="primary" id="rsvpBtn">Share my location and RSVP</button>
+      </form>
+    </section>
+
+    <section id="vote" class="card" hidden>
+      <h2>Vote for a spot</h2>
+      <p id="voteNote" class="muted"></p>
+      <ul id="spots" class="list"></ul>
+    </section>
+
+    <section id="send" class="card highlight" hidden>
+      <h2 id="sendHeading">Send this back</h2>
+      <p id="sendNote" class="muted"></p>
+      <button type="button" class="primary" id="shareBtn">Send…</button>
+      <a id="smsBtn" class="button">Text it</a>
+      <button type="button" id="copyBtn">Copy message</button>
+      <textarea id="sendText" readonly aria-label="Message to send"></textarea>
+    </section>
+
+    <section id="reply" class="card" hidden>
+      <h2>This link is for the organizer</h2>
+      <p class="muted">It's an RSVP or vote. The organizer adds it by tapping it on their phone, in the Lunch Mate app.</p>
+    </section>
+
+    <section class="card">
+      <h2>Get the Lunch Mate app</h2>
+      <p class="muted">You can RSVP and vote here, but with the app, links open straight in it and your lunches are saved.</p>
+    </section>
+  </main>
+</body>
+</html>

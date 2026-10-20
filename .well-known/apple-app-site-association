@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [],
+        "components": [
+          {
+            "/": "/l/*",
+            "comment": "Lunch Mate links"
+          }
+        ]
+      }
+    ]
+  }
+}
