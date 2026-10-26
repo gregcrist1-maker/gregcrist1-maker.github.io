@@ -10,7 +10,18 @@ const host = location.host;
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 const fmtWhen = (iso) =>
   new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-const fmtMinutes = (s) => `${Math.max(1, Math.round(s / 60))} min`;
+const fmtDay = (iso) => new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+// "Wed, Oct 21, 12:00 PM, 1:00 PM; Thu, Oct 22, 12:30 PM", as in the app.
+function listTimes(times) {
+  const byDay = [];
+  for (const t of times) {
+    const day = fmtDay(t);
+    if (!byDay.length || byDay[byDay.length - 1][0] !== day) byDay.push([day]);
+    byDay[byDay.length - 1].push(fmtTime(t));
+  }
+  return byDay.map(([day, ...hours]) => `${day}, ${hours.join(', ')}`).join('; ');
+}
+const fmtMinutes = (s) =>`${Math.max(1, Math.round(s / 60))} min`;
 const mapsLink = (s) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.n)}%20${s.la},${s.lo}`;
 
 // This browser's RSVP and vote for each lunch. Kept so a later ballot link
@@ -63,7 +74,8 @@ function offerToSend(heading, note, text) {
 function renderHeader(m) {
   $('header').hidden = false;
   $('title').textContent = m.ti;
-  $('meta').textContent = `${fmtWhen(m.at)} · organized by ${m.o}`;
+  const when = m.ts && m.t !== 'f' ? `${m.ts.length} possible times` : fmtWhen(m.at);
+  $('meta').textContent = `${when} · organized by ${m.o}`;
   document.title = `${m.ti} · Lunch Mate`;
 }
 
@@ -74,6 +86,7 @@ function renderRsvp(m, me) {
   $('rsvpNote').textContent = me
     ? `${m.o} gets your RSVP when they tap the link you send. Moved? Send an updated one.`
     : `${m.o} uses everyone's location to find a spot that suits the group. Only people in this lunch see it.`;
+  if (m.ts) $('rsvpNote').textContent += ` Possible times: ${listTimes(m.ts)}. You'll pick the ones that work when you vote.`;
   $('rsvpBtn').textContent = me ? 'Send updated RSVP' : 'Share my location and RSVP';
   const form = $('rsvpForm');
   if (me && !form.name.value) form.name.value = me.n;
@@ -93,13 +106,56 @@ function renderRsvp(m, me) {
       offerToSend('Send your RSVP', `Send this to ${m.o}, or to the group chat they're in.`,
         `${saved.n} is in for lunch (${m.ti}).\n${m.o}, tap to add: ${link}`);
       renderRsvp(m, saved);
-      if (m.t === 'b') renderVote(m, saved);
+      if (m.t === 'b') {
+        renderTimes(m, saved);
+        renderVote(m, saved);
+      }
     } catch (err) {
       show('error', err.message);
     } finally {
       button.disabled = false;
     }
   };
+}
+
+// The vote message, with the times this person can make when the lunch has times.
+function voteMessage(m, me, spot) {
+  const avail = m.ts ? me.avail || [] : undefined;
+  const link = buildLink(host, { t: 'v', id: m.id, g: me.g, n: me.n, c: spot.i, ...(avail ? { a: avail } : {}) });
+  const times = !m.ts ? '' : avail.length === 0
+    ? " Can't make any of the times."
+    : ` Can make: ${listTimes(avail.map((k) => m.ts[k]))}.`;
+  return `${me.n} votes for ${spot.n}.${times}\n${m.o}, tap to count it: ${link}`;
+}
+
+function renderTimes(m, me) {
+  if (!m.ts || !me) return;
+  $('times').hidden = false;
+  const mine = me.avail || [];
+  $('timeList').replaceChildren(...m.ts.map((t, k) => {
+    const yes = mine.includes(k);
+    const li = document.createElement('li');
+    if (yes) li.className = 'mine';
+    const label = document.createElement('span');
+    label.className = 'grow';
+    label.textContent = fmtWhen(t);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = yes ? '✓ Yes' : 'No';
+    if (yes) button.className = 'primary';
+    button.onclick = () => {
+      const next = (yes ? mine.filter((x) => x !== k) : [...mine, k]).sort((a, b) => a - b);
+      const saved = { ...me, avail: next };
+      store.set(m.id, saved);
+      renderTimes(m, saved);
+      renderVote(m, saved);
+      // Already voted: the new times reach the organizer only in a new vote message.
+      const spot = saved.vote && m.c.find((s) => s.i === saved.vote);
+      if (spot) offerToSend('Send your updated times', `Send this to ${m.o}.`, voteMessage(m, saved, spot));
+    };
+    li.append(label, button);
+    return li;
+  }));
 }
 
 function renderVote(m, me) {
@@ -131,8 +187,8 @@ function renderVote(m, me) {
     button.onclick = () => {
       const saved = { ...me, vote: s.i };
       store.set(m.id, saved);
-      const link = buildLink(host, { t: 'v', id: m.id, g: saved.g, n: saved.n, c: s.i });
-      offerToSend('Send your vote', `Send this to ${m.o}.`, `${saved.n} votes for ${s.n}.\n${m.o}, tap to count it: ${link}`);
+      offerToSend('Send your vote', `Send this to ${m.o}.`, voteMessage(m, saved, s));
+      renderTimes(m, saved);
       renderVote(m, saved);
     };
     li.append(info, button);
@@ -147,14 +203,19 @@ function renderPlan(m, me) {
   spot.href = mapsLink(m.s);
   $('spotAddress').textContent = m.s.a;
   const mine = me && m.p.find((p) => p.g === me.g);
+  const out = m.x || [];
+  const meOut = me && out.some((p) => p.g === me.g);
   $('myLeave').innerHTML = '';
   const strong = document.createElement('strong');
   strong.textContent = mine
     ? `You leave by ${fmtTime(mine.l)} (${fmtMinutes(mine.s)} away).`
-    : `Everyone leaves by ${fmtTime(m.e)}.`;
+    : meOut
+      ? `You said you can't make this time. Everyone else leaves by ${fmtTime(m.e)}.`
+      : `Everyone leaves by ${fmtTime(m.e)}.`;
   $('myLeave').append(strong);
-  $('planNote').textContent = `Lunch is at ${fmtTime(m.at)}, with ${m.bu} minutes to spare.` +
-    (new Date(m.e) < new Date() ? ' The earliest leave-by time has already passed.' : '');
+  $('planNote').textContent = `Lunch is at ${fmtWhen(m.at)}, with ${m.bu} minutes to spare.` +
+    (new Date(m.e) < new Date() ? ' The earliest leave-by time has already passed.' : '') +
+    (out.length ? ` Can't make this time: ${out.map((p) => p.n).join(', ')}.` : '');
   $('planRows').replaceChildren(...m.p.map((p) => {
     const tr = document.createElement('tr');
     if (mine && p.g === mine.g) tr.className = 'mine';
@@ -203,6 +264,7 @@ function init() {
   if (m.t === 'i') renderRsvp(m, me);
   if (m.t === 'b') {
     renderRsvp(m, me);
+    renderTimes(m, me);
     renderVote(m, me);
   }
   if (m.t === 'f') renderPlan(m, me);

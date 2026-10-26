@@ -1,7 +1,8 @@
 // Browser copy of src/lib/protocol.ts for the fallback page. It must produce
 // and accept exactly the same links; tests/protocol.test.ts checks this.
 
-export const FORMAT = '1';
+export const FORMAT = '2';
+const READABLE_FORMATS = ['1', '2'];
 
 export function encode(message) {
   const bytes = new TextEncoder().encode(JSON.stringify(message));
@@ -28,7 +29,7 @@ export function buildLink(host, message) {
 export function parseLink(text) {
   const match = text.match(/\/l\/?#(\d+)\.([A-Za-z0-9_-]+)/);
   if (!match) return null;
-  if (match[1] !== FORMAT) throw new Error('This link is from a newer version of Lunch Mate.');
+  if (!READABLE_FORMATS.includes(match[1])) throw new Error('This link is from a newer version of Lunch Mate.');
   return decode(match[2]);
 }
 
